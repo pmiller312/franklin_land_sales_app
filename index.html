@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Franklin County Land Sales</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+  <style>
+    #map { height: 90vh; }
+    #controls { display: flex; flex-wrap: wrap; gap: 10px; padding: 10px; }
+    input, button { padding: 8px; font-size: 1em; }
+  </style>
+</head>
+<body>
+  <div id="controls">
+    <input type="text" id="search" placeholder="Search address..." />
+    <input type="number" id="minPrice" placeholder="Min price" />
+    <input type="number" id="maxPrice" placeholder="Max price" />
+    <input type="number" id="radius" placeholder="Nearby radius (m)" />
+    <button id="filterBtn">Apply Filters</button>
+  </div>
+  <div id="map"></div>
+
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script>
+    const map = L.map('map').setView([39.9612, -82.9988], 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+    function updateMap(sales) {
+      map.eachLayer(layer => {
+        if (layer instanceof L.Marker) map.removeLayer(layer);
+      });
+      sales.forEach(sale => {
+        const marker = L.marker([sale.lat, sale.lon]).addTo(map);
+        marker.bindPopup(`<b>${sale.address}</b><br>$${sale.sale_price}<br>${sale.sale_date}`);
+      });
+    }
+
+    async function fetchSales(query = "", minPrice = 0, maxPrice = 99999999) {
+      const res = await fetch(`http://localhost:8000/sales?query=${query}&min_price=${minPrice}&max_price=${maxPrice}`);
+      return await res.json();
+    }
+
+    async function fetchNearby(lat, lon, radius = 1000) {
+      const res = await fetch(`http://localhost:8000/sales/nearby?lat=${lat}&lon=${lon}&radius=${radius}`);
+      return await res.json();
+    }
+
+    document.getElementById('filterBtn').addEventListener('click', async () => {
+      const query = document.getElementById('search').value;
+      const minPrice = document.getElementById('minPrice').value || 0;
+      const maxPrice = document.getElementById('maxPrice').value || 99999999;
+      const radius = document.getElementById('radius').value;
+
+      if (radius) {
+        const center = map.getCenter();
+        const sales = await fetchNearby(center.lat, center.lng, radius);
+        updateMap(sales);
+      } else {
+        const sales = await fetchSales(query, minPrice, maxPrice);
+        updateMap(sales);
+      }
+    });
+
+    fetchSales().then(updateMap);
+  </script>
+</body>
+</html>

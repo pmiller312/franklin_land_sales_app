@@ -1,0 +1,29 @@
+version: '3.8'
+services:
+  db:
+    image: postgis/postgis:15-3.3
+    restart: always
+    environment:
+      POSTGRES_DB: franklin
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@db:5432/franklin
+    depends_on:
+      - db
+    volumes:
+      - ./backend:/app/backend
+      - ./cron:/app/cron
+    restart: always
+
+volumes:
+  pgdata:
